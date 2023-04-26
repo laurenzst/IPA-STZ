@@ -1,0 +1,14 @@
+---
+- name: Worker Playbook
+  hosts: worker
+  become: true
+  tasks:
+  - name: Copy join command to server location
+    copy: src=join-command dest=/tmp/join-command.sh mode=0777
+
+  - name: Add flag for Worker-Node name
+    become_method: sudo
+    shell: echo '--node-name {{ inventory_hostname }}' >> /tmp/join-command.sh
+
+  - name: Join the Worker-Node to Cluster
+    command: sh /tmp/join-command.sh

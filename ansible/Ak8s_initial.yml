@@ -1,0 +1,142 @@
+---
+- name: Initial Configuration
+  hosts: all
+  become: true
+  tasks:
+  - name: Disable SWAP
+    shell: swapoff -a
+
+  - name: Keep SWAP off
+    replace: 
+      path: /etc/fstab
+      regexp: '^([^#].*?\sswap\s+sw\s+sw.*)'
+      replace: '# \1'
+
+  - name: Add Kubic Public Key
+    ansible.builtin.apt_key:
+      url: https://download.opensuse.org/repositories/devel:/kubic:/libcontainers:/stable/xUbuntu_22.04/Release.key
+      keyring: /etc/apt/trusted.gpg.d/libcontainers.gpg
+      state: present
+
+  - name: Add Kubic Repository
+    ansible.builtin.apt_repository:
+      repo: deb https://download.opensuse.org/repositories/devel:/kubic:/libcontainers:/stable/xUbuntu_22.04/ /
+      state: present 
+
+  - name: Add CRI-O Public Key
+    ansible.builtin.apt_key:
+      url: https://download.opensuse.org/repositories/devel:kubic:libcontainers:stable:cri-o:1.23/xUbuntu_22.04/Release.key
+      keyring: /etc/apt/trusted.gpg.d/libcontainers.gpg
+      state: present
+
+  - name: Add CRI-O Repository
+    ansible.builtin.apt_repository:
+      repo: deb http://download.opensuse.org/repositories/devel:/kubic:/libcontainers:/stable:/cri-o:/1.23/xUbuntu_22.04/ /
+      state: present 
+
+  - name: Add Kubernetes Public Key
+    ansible.builtin.apt_key:
+      url: https://packages.cloud.google.com/apt/doc/apt-key.gpg
+      state: present
+
+  - name: Add Kubernetes Repository
+    ansible.builtin.apt_repository:
+      repo: deb https://apt.kubernetes.io/ kubernetes-xenial main
+      state: present 
+      filename: kubernetes.list
+
+  - name: Install Kubernetes 
+    ansible.builtin.apt:
+      update_cache: yes
+      pkg: 
+      - kubelet 
+      - kubectl
+      - kubeadm
+
+  - name: Install CRI-O and update
+    ansible.builtin.apt:
+      update_cache: yes
+      pkg:
+      - cri-o
+      - cri-tools
+      - cri-o-runc 
+  
+  - name: Create crio.conf
+    ansible.builtin.file:
+      path: /etc/modules-load.d/crio.conf
+      state: touch
+    
+  - name: Modules for CRI-O to load at boot
+    lineinfile:
+      line: |
+        "overlay"
+        "br_netfilter"
+      dest: /etc/modules-load.d/crio.conf
+      insertafter: 'EOF'
+      regexp: |
+        'overlay'
+        'br_netfilter'
+      state: present
+
+  - name: Create crio.conf for tuneables
+    ansible.builtin.file:
+      path: /etc/sysctl.d/crio.conf
+      state: touch
+
+  - name: tune the sysctl for IPv4-Passthrough
+    lineinfile:
+      line: |
+        "net.bridge.bridge-nf-call-iptables = 1"
+        "net.ipv4.ip_forward = 1"
+        "net.bridge.bridge-nf-call-ip6tables = 1"
+      dest: /etc/sysctl.d/crio.conf
+      insertafter: 'EOF'
+      regexp: |
+        "net.bridge.bridge-nf-call-iptables = 1"
+        "net.ipv4.ip_forward = 1"
+        "net.bridge.bridge-nf-call-ip6tables = 1"
+      state: present
+
+  - name: Reload sysctl
+    become_method: sudo
+    shell: sysctl --system
+
+  - name: Daemon Reload
+    become_method: sudo
+    ansible.builtin.systemd:
+      daemon_reload: yes 
+
+  - name: Enable CRI-O service
+    become_method: sudo
+    ansible.builtin.systemd:
+      name: crio 
+      enabled: yes
+
+  -  name: Pass Node-IP to kubelet
+     ansible.builtin.lineinfile:
+      path: /etc/default/kubelet
+      line: KUBELET_EXTRA_ARGS=--node-ip={{ ansible_eth0.ipv4.address }}
+      create: yes
+
+  - name: Allow IPv4 forwards
+    become_method: sudo
+    shell: echo 1 > /proc/sys/net/ipv4/ip_forward
+
+  - name: Add loaded-Modules to Linux-Kernel
+    become_method: sudo
+    shell: |
+      modprobe overlay
+      modprobe br_netfilter
+
+  - name: Restart CRI-O
+    become_method: sudo
+    ansible.builtin.systemd:
+      name: crio
+      state: restarted
+
+  - name: Restart kubelet
+    become_method: sudo 
+    ansible.builtin.systemd:
+      name: kubelet
+      daemon_reload: yes
+      state: restarted

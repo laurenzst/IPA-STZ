@@ -1,0 +1,27 @@
+---
+- name: Master Playbook
+  hosts: master
+  become: true
+  tasks: 
+  - name: Kubernetes Cluster initialize
+    become_method: sudo
+    shell: kubeadm init --apiserver-advertise-address={{ ansible_eth0.ipv4.address }} --apiserver-cert-extra-sans={{ ansible_eth0.ipv4.address }} --apiserver-cert-extra-sans={{ ansible_host }} --node-name {{ inventory_hostname }} --pod-network-cidr=192.168.0.0/16 --cri-socket=unix:///var/run/crio/crio.sock
+
+  - name: Kubeconfig
+    become_method: sudo
+    shell: "{{ item }}"
+    with_items:
+    - mkdir -p /home/ansible/.kube
+    - cp -i /etc/kubernetes/admin.conf /home/ansible/.kube/config
+    - chown ansible:ansible /home/ansible/.kube/config
+
+  - name: Installation Calico 
+    become_user: ansible
+    shell: kubectl apply -f https://raw.githubusercontent.com/projectcalico/calico/v3.25.0/manifests/calico.yaml
+
+  - name: Generate Kubernetes join command
+    command: kubeadm token create --print-join-command
+    register: join_command
+
+  - name: Copy join command to local file
+    local_action: copy content="{{ join_command.stdout_lines[0] }}" dest="./join-command"
