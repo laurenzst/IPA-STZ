@@ -1,0 +1,22 @@
+#   ⡇⠄⣿⣿⣿⣿⡇⠄⣿⣿⠄⠙⢿⣿⣿⠟⠉⠄⣿⣿⠄⢀⣀⣀⣀⡀⠙⣿
+#   ⡇⠄⣿⣿⣿⣿⡇⠄⣿⣿⠄⢠⡀⠙⠋⢀⡄⠄⣿⣿⠄⠈⠉⠉⠉⠁⠄⣿
+#   ⣧⠄⠙⠻⠿⠛⠁⣠⣿⣿⠄⢸⣿⣦⣴⣿⡇⠄⣿⣿⠄⠘⠛⠛⠛⠛⠄⣼
+#   ⣿⣿⣶⣶⣶⣶⣾⣿⣿⣿⣶⣾⣿⣿⣿⣿⣷⣶⣿⣿⣶⣶⣶⣶⣶⣶⣾⣿
+#   ⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄
+
+
+#   Date:          2023.04.17
+#   Creator:       Laurenz Ströbele, laurenz.stroebele@umb.ch | Team Linux Operations UMB AG
+#   Filename:      Ak8s_automation.yaml
+#   Description:   triggering all Ansible Playbooks to install Kubernetes Cluster
+#   Contains:
+#     - Trigger Initial Setup     [Hosts: all]
+#     - Trigger Masternode Setup  [Hosts: master]
+#     - Trigger Workernode Setup  [Hosts: worker]
+
+###########################################################################################################
+
+---
+- import_playbook: ./ansible/Ak8s_initial.yml
+- import_playbook: ./ansible/Ak8s_masterconf.yml
+- import_playbook: ./ansible/Ak8s_workerconf.yml
