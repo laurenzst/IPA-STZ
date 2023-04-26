@@ -10,9 +10,10 @@
 #   Filename:      variables.tf
 #   Description:   Variable File for Azure K8s Automation
 #   Contains:
-#     - Dynamic Variables, to change:
-#       - Azure Subscription ID                             
-#       - Azure Tenant ID                                  
+#     - Dynamic Variables, to change:                            
+#       - Azure Tenant ID     
+#       - Azure Subscription ID 
+#       - Resource Group Name addition                           
 #       - Virtual Machine Quantity of Kubernetes Masters    
 #       - Virtual Machine Quantity of Kubernetes Nodes     
 #       - Azure virtual machine resource type
